@@ -1,14 +1,31 @@
 # harnfig
 
-Install the same [Agent Skills](https://agentskills.io) for Cursor, Codex, and Claude from one small YAML file.
+[![CI](https://github.com/pfedotovsky/harnfig/actions/workflows/ci.yml/badge.svg)](https://github.com/pfedotovsky/harnfig/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/harnfig.svg)](https://www.nuget.org/packages/harnfig)
+[![Release](https://img.shields.io/github/v/release/pfedotovsky/harnfig)](https://github.com/pfedotovsky/harnfig/releases/latest)
+[![License](https://img.shields.io/github/license/pfedotovsky/harnfig)](LICENSE)
+
+**Install the same [Agent Skills](https://agentskills.io) for Cursor, Codex, and Claude from one YAML file.**
+
+One manifest, one lockfile, one command:
 
 ```text
-harnfig.yaml → harnfig install → Cursor / Codex / Claude
+harnfig.yaml ── harnfig install ──┬── .cursor/skills
+                                  ├── .agents/skills
+                                  └── .claude/skills
 ```
 
-Harnfig is deliberately narrow. It installs skills from GitHub and does not try to manage every part of an agent harness. That keeps the implementation small enough to read, explain, and change during a .NET talk.
+Harnfig installs Agent Skills directly from GitHub, pins them to commits, and keeps every selected agent in sync.
+
+![A terminal session showing Harnfig installing two skills for Cursor, Codex, and Claude](docs/assets/harnfig-demo.svg)
 
 ## Quick start
+
+Install Harnfig as a .NET tool (requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)):
+
+```bash
+dotnet tool install --global harnfig
+```
 
 Create `harnfig.yaml` in your repository:
 
@@ -25,68 +42,83 @@ skills:
   - repo: mattpocock/skills
     path: skills/productivity/grill-me
     ref: main
-
-  - repo: nicobailon/visual-explainer
-    path: plugins/visual-explainer
-    ref: main
 ```
 
-Then run:
+Then install the skill for every selected agent:
 
 ```bash
 harnfig install
 ```
 
-`repo` is the GitHub repository. `path` is the directory containing the skill's `SKILL.md` inside that repository. Use `path: .` when the repository root is the skill.
+Commit `harnfig.yaml` and the generated `harnfig.lock`. Anyone cloning the repository can now reproduce the same skill setup.
 
-Harnfig resolves Git refs to commits, validates each skill, installs it in every selected agent directory, and writes `harnfig.lock`. Commit the YAML and lockfile for reproducible setup.
+## What you get
 
-## 60-second talk demo
+- **One source of truth.** Declare skills once instead of configuring each agent separately.
+- **Reproducible installs.** Git refs resolve to commits and content digests are recorded in `harnfig.lock`.
+- **Safe updates.** Existing unmanaged or locally modified skills stay untouched unless you pass `--force`.
+- **Atomic multi-agent writes.** Changes are staged and rolled back together if installation fails.
+- **Private repository support.** Harnfig uses your existing Git credential helper or SSH agent and never stores tokens.
 
-1. Show the two entries in [`examples/harnfig.yaml`](examples/harnfig.yaml).
-2. Run `harnfig install --config examples/harnfig.yaml`.
-3. Open `.cursor/skills`, `.agents/skills`, and `.claude/skills`: both skills are present in each.
-4. Show the resolved commits and content digests in [`examples/harnfig.lock`](examples/harnfig.lock).
-5. Run the same command again: the result is `0 installed, 6 unchanged`.
+## Configuration
 
-That is the complete idea: strict YAML, ordinary Git, `SKILL.md` validation, deterministic hashing, and safe filesystem replacement.
+Each skill points to a directory in a GitHub repository:
 
-## Installation
+```yaml
+skills:
+  - repo: nicobailon/visual-explainer
+    path: plugins/visual-explainer
+    ref: main
+```
 
-### .NET tool
+`repo` is the GitHub repository. `path` is the directory containing the skill's `SKILL.md`; use `path: .` when the repository root is the skill. `ref` can be a branch, tag, or commit.
 
-Requires the .NET 10 SDK. Version `0.1.0` is published on [NuGet.org](https://www.nuget.org/packages/harnfig/0.1.0).
+Set `scope` to `project` to install beside the configuration file or `user` to install in the current user's agent directories. See the complete [example manifest](examples/harnfig.yaml) and its generated [lockfile](examples/harnfig.lock).
 
-```bash
-dotnet tool install --global harnfig
+## Commands
+
+```text
+harnfig install [--config <path>] [--scope project|user]
+                [--dry-run] [--frozen] [--update] [--force]
 harnfig version
+harnfig help
 ```
 
-On Linux and macOS, the .NET installer may ask you to add the global tools directory to `PATH`:
+- `--dry-run` resolves and validates without writing.
+- `--frozen` requires the lockfile to match exactly.
+- `--update` refreshes mutable refs.
+- `--force` replaces unmanaged or locally modified destinations.
 
-```bash
-export PATH="$HOME/.dotnet/tools:$PATH"
-```
+Project installations are relative to `harnfig.yaml`:
 
-Put it before the existing `PATH` so `harnfig` wins if another executable with the same name is already installed. Check with `command -v harnfig`.
+| Agent | Project | User |
+|---|---|---|
+| Cursor | `.cursor/skills/<name>` | `~/.cursor/skills/<name>` |
+| Codex | `.agents/skills/<name>` | `~/.agents/skills/<name>` |
+| Claude | `.claude/skills/<name>` | `~/.claude/skills/<name>` |
 
-When .NET itself was installed through Homebrew, also set:
+## Safety model
 
-```bash
-export DOTNET_ROOT="$(brew --prefix dotnet)/libexec"
-```
+- Downloaded scripts, hooks, and commands are never executed during installation.
+- Repository paths cannot escape the checkout.
+- Symlinks and special filesystem entries are rejected in v0.1.
+- Existing unmanaged or locally changed skills are not overwritten without `--force`.
+- Multi-target writes are staged and rolled back if the transaction fails.
+- The installed skill is copied unchanged, including its own license.
 
-### One-off execution
+## Installation alternatives
 
-.NET 10 can download and run the tool without installing it globally:
+Choose the channel that fits your environment:
 
-```bash
-dotnet tool exec harnfig -- install
-```
+| Channel | Command or download | Runtime required |
+|---|---|---|
+| .NET global tool | `dotnet tool install --global harnfig` | .NET 10 SDK |
+| One-off .NET execution | `dotnet tool exec harnfig -- install` | .NET 10 SDK |
+| Homebrew | `brew install pfedotovsky/tap/harnfig` | None |
+| Scoop | See the Windows commands below | None |
+| Native executable | [Download from GitHub Releases](https://github.com/pfedotovsky/harnfig/releases/latest) | None |
 
-### Native executables
-
-Self-contained NativeAOT archives for macOS, Linux, and Windows are available on [GitHub Releases](https://github.com/pfedotovsky/harnfig/releases/tag/v0.1.0). They do not require an installed .NET runtime.
+All five channels are published and verified. NativeAOT archives are available for macOS, Linux, and Windows across six platforms.
 
 ### Homebrew
 
@@ -111,54 +143,29 @@ harnfig version
 
 The manifest is published in [`pfedotovsky/scoop-bucket`](https://github.com/pfedotovsky/scoop-bucket).
 
-### Channel status
+### .NET tool setup
 
-| Channel | Status |
-|---|---|
-| NuGet global tool | Available and verified |
-| NuGet one-off execution | Available and verified |
-| GitHub NativeAOT archives | Available and verified for six platforms |
-| Homebrew | Available and verified on macOS and Linux |
-| Scoop | Available and verified on Windows |
+On Linux and macOS, the .NET installer may ask you to add the global tools directory to `PATH`:
 
-## Commands
-
-```text
-harnfig install [--config <path>] [--scope project|user]
-                [--dry-run] [--frozen] [--update] [--force]
-harnfig version
-harnfig help
+```bash
+export PATH="$HOME/.dotnet/tools:$PATH"
 ```
 
-- `--dry-run` resolves and validates without writing.
-- `--frozen` requires the lockfile to match exactly.
-- `--update` refreshes mutable refs.
-- `--force` replaces unmanaged or locally modified destinations.
+Put it before the existing `PATH` so `harnfig` wins if another executable with the same name is already installed. Check with `command -v harnfig`.
 
-Project installations are relative to `harnfig.yaml`:
+When .NET itself was installed through Homebrew, also set:
 
-| Agent | Project | User |
-|---|---|---|
-| Cursor | `.cursor/skills/<name>` | `~/.cursor/skills/<name>` |
-| Codex | `.agents/skills/<name>` | `~/.agents/skills/<name>` |
-| Claude | `.claude/skills/<name>` | `~/.claude/skills/<name>` |
+```bash
+export DOTNET_ROOT="$(brew --prefix dotnet)/libexec"
+```
 
-Private GitHub repositories use your existing Git credential helper or SSH agent. Harnfig does not read or store tokens.
+## Why Harnfig?
 
-## Safety model
+[gaal](https://github.com/getgaal/gaal) solves a broader version of this problem: skills, MCP servers, repositories, content, and hooks. [Vercel skills](https://github.com/vercel-labs/skills), [`gh skill`](https://cli.github.com/manual/gh_skill), and [OpenSkills](https://github.com/numman-ali/openskills) are useful alternatives too.
 
-- Downloaded scripts, hooks, and commands are never executed during installation.
-- Repository paths cannot escape the checkout.
-- Symlinks and special filesystem entries are rejected in v0.1.
-- Existing unmanaged or locally changed skills are not overwritten without `--force`.
-- Multi-target writes are staged and rolled back if the transaction fails.
-- The installed skill is copied unchanged, including its own license.
+Harnfig is deliberately narrower. It installs skills from GitHub without trying to manage every part of an agent harness. The useful core remains small enough to read, explain, and change: parse one file, resolve Git commits, validate `SKILL.md`, and copy directories safely.
 
-## Why another tool?
-
-[gaal](https://github.com/getgaal/gaal) already solves a broader version of this problem: skills, MCP servers, repositories, content, and hooks. [Vercel skills](https://github.com/vercel-labs/skills), [`gh skill`](https://cli.github.com/manual/gh_skill), and [OpenSkills](https://github.com/numman-ali/openskills) are useful alternatives too.
-
-Harnfig exists to show .NET developers that the useful core is approachable: parse one file, resolve Git commits, validate `SKILL.md`, and copy directories safely. See [the alternatives](docs/alternatives.md) and [architecture](docs/architecture.md) for the boundaries.
+That also makes Harnfig a compact .NET teaching project. See the [60-second talk demo](docs/demo.md), [alternatives](docs/alternatives.md), and [architecture](docs/architecture.md) for more context.
 
 ## Development
 
@@ -176,4 +183,4 @@ LIBRARY_PATH="$(brew --prefix openssl@3)/lib:$(brew --prefix brotli)/lib" \
 
 The release workflow builds all six runtime identifiers on native GitHub-hosted runners.
 
-The code is licensed under Apache-2.0. Downloaded skills retain their original licenses.
+The code is licensed under [Apache-2.0](LICENSE). Downloaded skills retain their original licenses.

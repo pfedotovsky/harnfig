@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="430" viewBox="0 0 920 430" role="img" aria-labelledby="title description">
+  <title id="title">Harnfig terminal demo</title>
+  <desc id="description">A terminal session running harnfig install and installing two skills for Cursor, Codex, and Claude.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101827"/>
+      <stop offset="1" stop-color="#182234"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-15%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020617" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="920" height="430" rx="18" fill="#f1f5f9"/>
+  <rect x="24" y="24" width="872" height="382" rx="13" fill="url(#background)" filter="url(#shadow)"/>
+  <path d="M37 24h846a13 13 0 0 1 13 13v39H24V37a13 13 0 0 1 13-13Z" fill="#202c40"/>
+  <circle cx="50" cy="50" r="7" fill="#fb7185"/>
+  <circle cx="74" cy="50" r="7" fill="#fbbf24"/>
+  <circle cx="98" cy="50" r="7" fill="#4ade80"/>
+  <text x="460" y="56" text-anchor="middle" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">harnfig — zsh</text>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">
+    <text x="52" y="108" fill="#4ade80">❯ <tspan fill="#f8fafc">harnfig install</tspan></text>
+
+    <text x="52" y="146" fill="#60a5fa">install</text>
+    <text x="138" y="146" fill="#e2e8f0">grill-me</text>
+    <text x="322" y="146" fill="#64748b">→</text>
+    <text x="354" y="146" fill="#fbbf24">.cursor/skills/grill-me</text>
+
+    <text x="52" y="178" fill="#60a5fa">install</text>
+    <text x="138" y="178" fill="#e2e8f0">visual-explainer</text>
+    <text x="322" y="178" fill="#64748b">→</text>
+    <text x="354" y="178" fill="#fbbf24">.cursor/skills/visual-explainer</text>
+
+    <text x="52" y="210" fill="#60a5fa">install</text>
+    <text x="138" y="210" fill="#e2e8f0">grill-me</text>
+    <text x="322" y="210" fill="#64748b">→</text>
+    <text x="354" y="210" fill="#a78bfa">.agents/skills/grill-me</text>
+
+    <text x="52" y="242" fill="#60a5fa">install</text>
+    <text x="138" y="242" fill="#e2e8f0">visual-explainer</text>
+    <text x="322" y="242" fill="#64748b">→</text>
+    <text x="354" y="242" fill="#a78bfa">.agents/skills/visual-explainer</text>
+
+    <text x="52" y="274" fill="#60a5fa">install</text>
+    <text x="138" y="274" fill="#e2e8f0">grill-me</text>
+    <text x="322" y="274" fill="#64748b">→</text>
+    <text x="354" y="274" fill="#fb7185">.claude/skills/grill-me</text>
+
+    <text x="52" y="306" fill="#60a5fa">install</text>
+    <text x="138" y="306" fill="#e2e8f0">visual-explainer</text>
+    <text x="322" y="306" fill="#64748b">→</text>
+    <text x="354" y="306" fill="#fb7185">.claude/skills/visual-explainer</text>
+
+    <rect x="52" y="336" width="816" height="1" fill="#334155"/>
+    <text x="52" y="374" fill="#4ade80">done: 6 installed, 0 unchanged</text>
+  </g>
+</svg>
