@@ -4,5 +4,6 @@ artifacts/
 .vs/
 .idea/
 .dotnet-home/
+.DS_Store
 *.user
 *.suo
