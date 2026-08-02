@@ -88,6 +88,29 @@ dotnet tool exec harnfig -- install
 
 Self-contained NativeAOT archives for macOS, Linux, and Windows are available on [GitHub Releases](https://github.com/pfedotovsky/harnfig/releases/tag/v0.1.0). They do not require an installed .NET runtime.
 
+### Homebrew
+
+With [Homebrew](https://brew.sh/) installed on macOS or Linux:
+
+```bash
+brew install pfedotovsky/tap/harnfig
+harnfig version
+```
+
+The formula is published in [`pfedotovsky/homebrew-tap`](https://github.com/pfedotovsky/homebrew-tap).
+
+### Scoop
+
+With [Scoop](https://scoop.sh/) installed on Windows:
+
+```powershell
+scoop bucket add pfedotovsky https://github.com/pfedotovsky/scoop-bucket
+scoop install harnfig
+harnfig version
+```
+
+The manifest is published in [`pfedotovsky/scoop-bucket`](https://github.com/pfedotovsky/scoop-bucket).
+
 ### Channel status
 
 | Channel | Status |
@@ -95,10 +118,8 @@ Self-contained NativeAOT archives for macOS, Linux, and Windows are available on
 | NuGet global tool | Available and verified |
 | NuGet one-off execution | Available and verified |
 | GitHub NativeAOT archives | Available and verified for six platforms |
-| Homebrew | Planned; formula not published yet |
-| Scoop | Planned; bucket not published yet |
-
-Homebrew and Scoop commands will be added only after their manifests are publicly available and tested.
+| Homebrew | Available and verified on macOS and Linux |
+| Scoop | Available and verified on Windows |
 
 ## Commands
 
