@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: "**/*.csproj"
+      - run: dotnet restore Harnfig.slnx
+      - run: dotnet format Harnfig.slnx --verify-no-changes --no-restore
+      - run: dotnet build Harnfig.slnx --configuration Release --no-restore
+      - run: dotnet test Harnfig.slnx --configuration Release --no-build --logger "console;verbosity=normal"
+      - run: dotnet pack src/Harnfig/Harnfig.csproj --configuration Release --no-build --output artifacts
+
+  native-aot:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            rid: linux-x64
+          - os: macos-15
+            rid: osx-arm64
+          - os: windows-2025
+            rid: win-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: src/Harnfig/Harnfig.csproj
+      - name: Configure macOS NativeAOT libraries
+        if: runner.os == 'macOS'
+        shell: bash
+        run: echo "LIBRARY_PATH=$(brew --prefix openssl@3)/lib:$(brew --prefix brotli)/lib" >> "$GITHUB_ENV"
+      - run: dotnet publish src/Harnfig/Harnfig.csproj --configuration Release --runtime ${{ matrix.rid }} --output artifacts/${{ matrix.rid }}
+      - name: Smoke test native executable
+        shell: bash
+        run: |
+          binary="artifacts/${{ matrix.rid }}/harnfig"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then binary="$binary.exe"; else chmod +x "$binary"; fi
+          "$binary" version

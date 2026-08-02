@@ -1,0 +1,16 @@
+version: 1
+scope: project
+
+agents:
+  - cursor
+  - codex
+  - claude
+
+skills:
+  - repo: mattpocock/skills
+    path: skills/productivity/grill-me
+    ref: main
+
+  - repo: nicobailon/visual-explainer
+    path: plugins/visual-explainer
+    ref: main

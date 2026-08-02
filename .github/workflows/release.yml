@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: "**/*.csproj"
+      - run: dotnet restore Harnfig.slnx
+      - run: dotnet build Harnfig.slnx --configuration Release --no-restore
+      - run: dotnet test Harnfig.slnx --configuration Release --no-build
+
+  native:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            rid: linux-x64
+            smoke: true
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
+            smoke: true
+          - os: macos-15-intel
+            rid: osx-x64
+            smoke: true
+          - os: macos-15
+            rid: osx-arm64
+            smoke: true
+          - os: windows-2025
+            rid: win-x64
+            smoke: true
+          - os: windows-11-arm
+            rid: win-arm64
+            smoke: true
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: src/Harnfig/Harnfig.csproj
+      - name: Configure macOS NativeAOT libraries
+        if: runner.os == 'macOS'
+        shell: bash
+        run: echo "LIBRARY_PATH=$(brew --prefix openssl@3)/lib:$(brew --prefix brotli)/lib" >> "$GITHUB_ENV"
+      - name: Read version
+        id: version
+        shell: bash
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Publish NativeAOT executable
+        run: dotnet publish src/Harnfig/Harnfig.csproj --configuration Release --runtime ${{ matrix.rid }} --output artifacts/${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
+      - name: Smoke test
+        if: matrix.smoke
+        shell: bash
+        run: |
+          binary="artifacts/${{ matrix.rid }}/harnfig"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then binary="$binary.exe"; else chmod +x "$binary"; fi
+          test "$("$binary" version)" = "${{ steps.version.outputs.value }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.rid }}
+          path: artifacts/${{ matrix.rid }}/harnfig*
+          if-no-files-found: error
+
+  nuget:
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: src/Harnfig/Harnfig.csproj
+      - name: Read version
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - run: dotnet pack src/Harnfig/Harnfig.csproj --configuration Release --output artifacts -p:Version=${{ steps.version.outputs.value }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nuget
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+  publish:
+    needs: [native, nuget]
+    runs-on: ubuntu-24.04
+    env:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      PACKAGE_REPOS_TOKEN: ${{ secrets.PACKAGE_REPOS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
+        with:
+          path: downloaded
+      - name: Package release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          for rid in linux-x64 linux-arm64 osx-x64 osx-arm64; do
+            chmod +x "downloaded/native-$rid/harnfig"
+            tar -C "downloaded/native-$rid" -czf "dist/harnfig-v$version-$rid.tar.gz" harnfig
+          done
+          for rid in win-x64 win-arm64; do
+            (cd "downloaded/native-$rid" && zip -q "$GITHUB_WORKSPACE/dist/harnfig-v$version-$rid.zip" harnfig.exe)
+          done
+          cp downloaded/nuget/*.nupkg dist/
+          (cd dist && sha256sum harnfig-v* > SHA256SUMS)
+      - uses: actions/attest@v4
+        with:
+          subject-path: dist/*
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
+      - name: Publish NuGet tool
+        if: ${{ env.NUGET_API_KEY != '' }}
+        run: dotnet nuget push "dist/harnfig.${GITHUB_REF_NAME#v}.nupkg" --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY" --skip-duplicate
+      - name: Render Homebrew and Scoop manifests
+        run: bash scripts/render-packaging.sh "${GITHUB_REF_NAME#v}" dist generated
+      - name: Update package repositories
+        if: ${{ env.PACKAGE_REPOS_TOKEN != '' }}
+        env:
+          GH_TOKEN: ${{ env.PACKAGE_REPOS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          git clone https://github.com/pfedotovsky/homebrew-tap package-repos/homebrew-tap
+          git clone https://github.com/pfedotovsky/scoop-bucket package-repos/scoop-bucket
+          cp generated/homebrew/harnfig.rb package-repos/homebrew-tap/Formula/harnfig.rb
+          mkdir -p package-repos/scoop-bucket/bucket
+          cp generated/scoop/harnfig.json package-repos/scoop-bucket/bucket/harnfig.json
+          for repo in homebrew-tap scoop-bucket; do
+            git -C "package-repos/$repo" config user.name github-actions[bot]
+            git -C "package-repos/$repo" config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git -C "package-repos/$repo" add .
+            git -C "package-repos/$repo" commit -m "harnfig ${GITHUB_REF_NAME#v}"
+            git -C "package-repos/$repo" push
+          done

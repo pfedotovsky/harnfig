@@ -1,0 +1,28 @@
+{
+  "version": "@@VERSION@@",
+  "description": "Declaratively install Agent Skills from GitHub.",
+  "homepage": "https://github.com/pfedotovsky/harnfig",
+  "license": "Apache-2.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/pfedotovsky/harnfig/releases/download/v@@VERSION@@/harnfig-v@@VERSION@@-win-x64.zip",
+      "hash": "@@WIN_X64_SHA@@"
+    },
+    "arm64": {
+      "url": "https://github.com/pfedotovsky/harnfig/releases/download/v@@VERSION@@/harnfig-v@@VERSION@@-win-arm64.zip",
+      "hash": "@@WIN_ARM64_SHA@@"
+    }
+  },
+  "bin": "harnfig.exe",
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/pfedotovsky/harnfig/releases/download/v$version/harnfig-v$version-win-x64.zip"
+      },
+      "arm64": {
+        "url": "https://github.com/pfedotovsky/harnfig/releases/download/v$version/harnfig-v$version-win-arm64.zip"
+      }
+    }
+  }
+}

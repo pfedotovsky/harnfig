@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/Harnfig/Harnfig.csproj" />
+  <Project Path="tests/Harnfig.Tests/Harnfig.Tests.csproj" />
+  <Project Path="tests/Harnfig.IntegrationTests/Harnfig.IntegrationTests.csproj" />
+</Solution>
