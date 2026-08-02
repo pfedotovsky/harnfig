@@ -1,0 +1,56 @@
+name: Verify package repository token
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.PACKAGE_REPOS_TOKEN }}
+    steps:
+      - name: Verify secret is configured
+        shell: bash
+        run: |
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "PACKAGE_REPOS_TOKEN is not configured." >&2
+            exit 1
+          fi
+
+      - name: Verify write access
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+
+          verification_branch="harnfig-token-check-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          repositories=(homebrew-tap scoop-bucket)
+          cloned_repositories=()
+
+          cleanup() {
+            status=$?
+            trap - EXIT
+            set +e
+            for repository in "${cloned_repositories[@]}"; do
+              git -C "$repository" push origin --delete "$verification_branch" >/dev/null 2>&1
+            done
+            exit "$status"
+          }
+          trap cleanup EXIT
+
+          for repository in "${repositories[@]}"; do
+            git clone "https://github.com/pfedotovsky/$repository.git" "$repository"
+            cloned_repositories+=("$repository")
+            git -C "$repository" config user.name github-actions[bot]
+            git -C "$repository" config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git -C "$repository" switch --create "$verification_branch"
+            git -C "$repository" commit --allow-empty --message "Verify harnfig package repository token"
+            git -C "$repository" push --set-upstream origin "$verification_branch"
+            git -C "$repository" push origin --delete "$verification_branch"
+          done
+
+          trap - EXIT
+          echo "PACKAGE_REPOS_TOKEN can write to both package repositories."
