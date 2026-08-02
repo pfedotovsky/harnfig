@@ -27,6 +27,12 @@ jobs:
       - run: dotnet build Harnfig.slnx --configuration Release --no-restore
       - run: dotnet test Harnfig.slnx --configuration Release --no-build --logger "console;verbosity=normal"
       - run: dotnet pack src/Harnfig/Harnfig.csproj --configuration Release --no-build --output artifacts
+      - name: Smoke test packed .NET tool
+        shell: bash
+        run: |
+          version="$(dotnet msbuild src/Harnfig/Harnfig.csproj -getProperty:Version -nologo)"
+          dotnet tool install --tool-path artifacts/tool --source artifacts harnfig --version "$version"
+          test "$(artifacts/tool/harnfig version)" = "$version"
 
   native-aot:
     strategy:

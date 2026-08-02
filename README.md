@@ -53,24 +53,52 @@ That is the complete idea: strict YAML, ordinary Git, `SKILL.md` validation, det
 
 ## Installation
 
-The first release will support four channels:
+### .NET tool
+
+Requires the .NET 10 SDK. Version `0.1.0` is published on [NuGet.org](https://www.nuget.org/packages/harnfig/0.1.0).
 
 ```bash
-# Any platform with the .NET 10 SDK
 dotnet tool install --global harnfig
-
-# One-off execution with .NET 10
-dnx harnfig -- install
-
-# macOS or Linux
-brew install pfedotovsky/tap/harnfig
-
-# Windows
-scoop bucket add pfedotovsky https://github.com/pfedotovsky/scoop-bucket
-scoop install harnfig
+harnfig version
 ```
 
-NativeAOT archives on [GitHub Releases](https://github.com/pfedotovsky/harnfig/releases) run without an installed .NET runtime.
+On Linux and macOS, the .NET installer may ask you to add the global tools directory to `PATH`:
+
+```bash
+export PATH="$HOME/.dotnet/tools:$PATH"
+```
+
+Put it before the existing `PATH` so `harnfig` wins if another executable with the same name is already installed. Check with `command -v harnfig`.
+
+When .NET itself was installed through Homebrew, also set:
+
+```bash
+export DOTNET_ROOT="$(brew --prefix dotnet)/libexec"
+```
+
+### One-off execution
+
+.NET 10 can download and run the tool without installing it globally:
+
+```bash
+dotnet tool exec harnfig -- install
+```
+
+### Native executables
+
+Self-contained NativeAOT archives for macOS, Linux, and Windows are available on [GitHub Releases](https://github.com/pfedotovsky/harnfig/releases/tag/v0.1.0). They do not require an installed .NET runtime.
+
+### Channel status
+
+| Channel | Status |
+|---|---|
+| NuGet global tool | Available and verified |
+| NuGet one-off execution | Available and verified |
+| GitHub NativeAOT archives | Available and verified for six platforms |
+| Homebrew | Planned; formula not published yet |
+| Scoop | Planned; bucket not published yet |
+
+Homebrew and Scoop commands will be added only after their manifests are publicly available and tested.
 
 ## Commands
 
@@ -119,7 +147,12 @@ Requires the .NET 10 SDK and Git.
 dotnet restore Harnfig.slnx
 dotnet build Harnfig.slnx --no-restore
 dotnet test Harnfig.slnx --no-build
-dotnet publish src/Harnfig/Harnfig.csproj -c Release -r osx-arm64
+
+# NativeAOT on macOS with Homebrew dependencies
+LIBRARY_PATH="$(brew --prefix openssl@3)/lib:$(brew --prefix brotli)/lib" \
+  dotnet publish src/Harnfig/Harnfig.csproj -c Release -r osx-arm64
 ```
+
+The release workflow builds all six runtime identifiers on native GitHub-hosted runners.
 
 The code is licensed under Apache-2.0. Downloaded skills retain their original licenses.
