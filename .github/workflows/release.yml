@@ -106,7 +106,6 @@ jobs:
     needs: [native, nuget]
     runs-on: ubuntu-24.04
     env:
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
       PACKAGE_REPOS_TOKEN: ${{ secrets.PACKAGE_REPOS_TOKEN }}
     steps:
       - uses: actions/checkout@v6
@@ -131,13 +130,17 @@ jobs:
       - uses: actions/attest@v4
         with:
           subject-path: dist/*
+      - name: Authenticate to NuGet.org with OIDC
+        id: nuget
+        uses: NuGet/login@v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - name: Publish NuGet tool
+        run: dotnet nuget push "dist/harnfig.${GITHUB_REF_NAME#v}.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" --skip-duplicate
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
-      - name: Publish NuGet tool
-        if: ${{ env.NUGET_API_KEY != '' }}
-        run: dotnet nuget push "dist/harnfig.${GITHUB_REF_NAME#v}.nupkg" --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY" --skip-duplicate
       - name: Render Homebrew and Scoop manifests
         run: bash scripts/render-packaging.sh "${GITHUB_REF_NAME#v}" dist generated
       - name: Update package repositories
